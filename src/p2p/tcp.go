@@ -1,14 +1,14 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 	"sync"
-	"fmt"
 )
-
 
 // TCPPeer represents the remote node over a TCP connection
 type TCPPeer struct {
+	// study
 	conn net.Conn
 
 	// if we dial a connection to another peer then it is outBound
@@ -16,31 +16,46 @@ type TCPPeer struct {
 	outBound bool
 }
 
-type TCPTransporter struct {
-	listnerAddr	string
-	listner		net.Listener
+type TCPTransportOpts struct {
+	ListenAddr string
+	Handshake  Handshake
+	Decoder    Decoder
+}
 
-	mu sync.RWMutex
-	peers map[net.Addr] Peer
+type TCPTransport struct {
+	TCPTransportOpts
+	// study
+	listner     net.Listener
+
+	mu    sync.RWMutex
+	peers map[net.Addr]Peer
+}
+
+func NewTCPTransportOpts(listnerAddr string, handshake Handshake, decoder Decoder) *TCPTransportOpts {
+	return &TCPTransportOpts{
+		ListenAddr: listnerAddr,
+		Handshake: handshake,
+		Decoder: decoder,
+	}
 }
 
 func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	return &TCPPeer{
-		conn: conn,
+		conn:     conn,
 		outBound: outBound,
 	}
 }
 
-func NewTCPTransporter(listnerAddr string) *TCPTransporter {
-	return &TCPTransporter{
-		listnerAddr: listnerAddr,
+func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
+	return &TCPTransport{
+		TCPTransportOpts: opts,
 	}
 }
 
-func (t *TCPTransporter) ListenAndAccept() error {
+func (t *TCPTransport) ListenAndAccept() error {
 	var err error
 
-	t.listner, err = net.Listen("tcp", t.listnerAddr)
+	t.listner, err = net.Listen("tcp", t.ListenAddr)
 	if err != nil {
 		return err
 	}
@@ -48,8 +63,9 @@ func (t *TCPTransporter) ListenAndAccept() error {
 	return nil
 }
 
-func (t *TCPTransporter) start() {
+func (t *TCPTransport) start() {
 	for {
+		// study
 		conn, err := t.listner.Accept()
 		if err != nil {
 			fmt.Printf("[ERROR] While Accepting: %s\n", err)
@@ -59,7 +75,23 @@ func (t *TCPTransporter) start() {
 }
 
 
-func (t *TCPTransporter) handleConn(conn net.Conn) {
+func (t *TCPTransport) handleConn(conn net.Conn) {
 	peer := NewTCPPeer(conn, true)
 	fmt.Printf("new conection: %+v | %+v\n", conn, peer)
+
+	if err := t.Handshake(peer); err != nil {
+		conn.Close()
+		fmt.Printf("[ERROR] TCP handshake error: %s\n", err)
+		return
+	}
+	fmt.Println("Handshake completed")
+
+	msg := NewMessage()
+	for {
+		conn.Read(msg.Payload)
+		if err := t.Decoder.Decode(conn, msg); err != nil {
+			fmt.Printf("[ERROR] TCP error: %s\n", err)
+		}
+		fmt.Println("[INFO] message: %+v\n", msg)
+	}
 }

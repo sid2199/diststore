@@ -8,7 +8,7 @@ import (
 
 func TestTCPTransport(t *testing.T) {
 	listnerAddr := ":4000"
-	tr := NewTCPTransporter(listnerAddr)
+	tr := NewTCPTransport(listnerAddr)
 
 	assert.Equal(t, tr.listnerAddr, listnerAddr)
 	assert.Nil(t, tr.ListenAndAccept())
