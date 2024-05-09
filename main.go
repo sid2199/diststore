@@ -9,7 +9,7 @@ import (
 
 func main() {
 	fmt.Println("[DISTRIBUTED STORAGE]")
-	tcpOpts := p2p.NewTCPTransportOpts(":8080", p2p.NOPHandshake, p2p.NewGOBDecoder())
+	tcpOpts := p2p.NewTCPTransportOpts(":8080", p2p.NOPHandshake, p2p.NewDefaultDecoder())
 	tr := p2p.NewTCPTransport(*tcpOpts)
 	if err := tr.ListenAndAccept(); err != nil {
 		log.Fatal(err)

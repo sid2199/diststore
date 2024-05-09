@@ -1,9 +1,12 @@
 package p2p
 
+import "net"
+
 type Message struct {
+	From net.Addr
 	Payload []byte
 }
 
-func NewMessage() *Message {
-	return &Message{}
+func NewMessage(from net.Addr) *Message {
+	return &Message{From:from}
 }
