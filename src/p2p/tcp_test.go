@@ -8,7 +8,7 @@ import (
 
 func TestTCPTransport(t *testing.T) {
 	listneAddr := ":4000"
-	ops := NewTCPTransportOpts(listneAddr, NOPHandshake, NewDefaultDecoder())
+	ops := NewTCPTransportOpts(listneAddr, NOPHandshake, NewDefaultDecoder(), DefaultPeerValidation)
 	tr := NewTCPTransport(*ops)
 
 	assert.Equal(t, tr.ListenAddr, listneAddr)
