@@ -9,7 +9,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	opts := NewStoreOpts(CASPathTransformer)
+	opts := NewStoreOpts("", CASPathTransformer)
 	store := NewStore(*opts)
 
 	data := []byte("some file data")
@@ -27,6 +27,7 @@ func TestStore(t *testing.T) {
 	}
 	assert.Equal(t, string(data), string(readedDate))
 	assert.Nil(t, store.deleteStream(key))
+	assert.False(t, store.Has(key))
 }
 
 func TestCASTransformer(t *testing.T) {
@@ -34,6 +35,6 @@ func TestCASTransformer(t *testing.T) {
 	pathKey := CASPathTransformer(key)
 	assert.Equal(t, PathKey{
 		PathName: "ab0d8/e0ce5/8e6fa/9d1b2/30d25/f2ea0/b44a5/1ebd4",
-		FileName:  "ab0d8e0ce58e6fa9d1b230d25f2ea0b44a51ebd4",
+		FileName: "ab0d8e0ce58e6fa9d1b230d25f2ea0b44a51ebd4",
 	}, pathKey)
 }
