@@ -8,6 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func teerDown(t *testing.T, s *Store) {
+	assert.Nil(t, s.Clear())
+}
+
 func TestStore(t *testing.T) {
 	opts := NewStoreOpts("", CASPathTransformer)
 	store := NewStore(*opts)

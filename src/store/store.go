@@ -77,6 +77,10 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
+func (s *Store) Read(key string) (io.Reader, error) {
+	return s.readStream(key)
+}
+
 func (s *Store) readStream(key string) (io.Reader, error) {
 	pathKey := s.PathTransformer(key)
 	fullFileNameWithRoot := s.Root + "/" + pathKey.FullFileName()
@@ -95,6 +99,10 @@ func (s *Store) readStream(key string) (io.Reader, error) {
 
 	fmt.Printf("Read %d bytes from disk: %s\n", n, fullFileNameWithRoot)
 	return buf, nil
+}
+
+func (s *Store) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
 }
 
 func (s *Store) writeStream(key string, r io.Reader) error {
@@ -124,10 +132,16 @@ func (s *Store) Has(key string) bool {
 	pathKey := s.PathTransformer(key)
 	fullFileNameWithRoot := s.Root + "/" + pathKey.FullFileName()
 
-	if _, err := os.Stat(fullFileNameWithRoot); errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	return true
+	_, err := os.Stat(fullFileNameWithRoot)
+	return !errors.Is(err, os.ErrNotExist)
+}
+
+func (s *Store) Clear() error {
+	return os.RemoveAll(s.Root)
+}
+
+func (s *Store) Delete(key string) error {
+	return s.deleteStream(key)
 }
 
 func (s *Store) deleteStream(key string) error {
