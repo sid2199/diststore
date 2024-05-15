@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	// "sync"
@@ -17,9 +18,9 @@ type TCPPeer struct {
 }
 
 type TCPTransportOpts struct {
-	ListenAddr string
-	Handshake  Handshake
-	Decoder    Decoder
+	ListenAddr     string
+	Handshake      Handshake
+	Decoder        Decoder
 	PeerValidation func(Peer) error
 }
 
@@ -29,15 +30,17 @@ type TCPTransport struct {
 	listner net.Listener
 	msgChan chan Message
 
+	tearDownChan chan int
+
 	// mu    sync.RWMutex
 	// peers map[net.Addr]Peer
 }
 
 func NewTCPTransportOpts(listnerAddr string, handshake Handshake, decoder Decoder, peerValidation func(Peer) error) *TCPTransportOpts {
 	return &TCPTransportOpts{
-		ListenAddr: listnerAddr,
-		Handshake:  handshake,
-		Decoder:    decoder,
+		ListenAddr:     listnerAddr,
+		Handshake:      handshake,
+		Decoder:        decoder,
 		PeerValidation: peerValidation,
 	}
 }
@@ -56,11 +59,12 @@ func (peer *TCPPeer) Close() error {
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
-		msgChan: make(chan Message),
+		msgChan:          make(chan Message),
+		tearDownChan:     make(chan int, 1),
 	}
 }
 
-func (t *TCPTransport) Consume() <-chan Message{
+func (t *TCPTransport) Consume() <-chan Message {
 	return t.msgChan
 }
 
@@ -72,6 +76,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 		return err
 	}
 	go t.start()
+	fmt.Println("[Started listening and accepting connections]")
 	return nil
 }
 
@@ -79,21 +84,37 @@ func (t *TCPTransport) start() {
 	for {
 		// study
 		conn, err := t.listner.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			return
+		}
 		if err != nil {
 			fmt.Printf("[ERROR] While Accepting: %s\n", err)
 		}
-		go t.handleConn(conn)
+		go t.handleConn(conn, false)
 	}
 }
 
-func (t *TCPTransport) handleConn(conn net.Conn) {
+// Dial implements Transport Interface
+func (t *TCPTransport) Dial(addr string) error {
+	// TODO: study
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Printf("[ERROR] While Dial TCP Transport, err: %s\n", err)
+		return err
+	}
+	go t.handleConn(conn, true)
+
+	return nil
+}
+
+func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 	var err error
 	defer func() {
 		fmt.Println("Closing peer connection")
 		conn.Close()
 	}()
 
-	peer := NewTCPPeer(conn, true)
+	peer := NewTCPPeer(conn, outBound)
 	fmt.Printf("new conection: %+v | %+v\n", conn, peer)
 
 	if err := t.Handshake(peer); err != nil {
@@ -122,4 +143,10 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		// TODO: could also send pointer to the message
 		t.msgChan <- *msg
 	}
+}
+
+func (t *TCPTransport) Close() error {
+	fmt.Println("Closing TCP Tranport")
+	t.tearDownChan <- 1
+	return t.listner.Close()
 }

@@ -18,6 +18,8 @@ func DefaultPeerValidation(peer Peer) error {
 type Transport interface{
 	ListenAndAccept() error
 	Consume() <-chan Message
+	Close () error
+	Dial(string) error
 }
 
 
