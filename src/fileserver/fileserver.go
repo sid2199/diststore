@@ -84,3 +84,11 @@ func (fs *FileServer) Dial() {
 		}(addr)
 	}
 }
+
+func MakeServer(listenAddr string, nodes ...string) *FileServer {
+	fsOpts := NewFileServerOpts(listenAddr+"_nw", store.CASPathTransformer,
+		p2p.NewTCPTransport(*p2p.NewTCPTransportOpts(
+			listenAddr, p2p.NOPHandshake, p2p.NewDefaultDecoder(), nil),
+		), nodes)
+	return NewFileServer(*fsOpts)
+}
