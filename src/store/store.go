@@ -5,14 +5,14 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
 
 type StoreOpts struct {
-	Root	string
+	Root            string
 	PathTransformer PathTransformer
 }
 
@@ -66,7 +66,7 @@ func NewStoreOpts(root string, pathTransformer PathTransformer) *StoreOpts {
 		root = DefaultStoreRoot
 	}
 	return &StoreOpts{
-		Root: root,
+		Root:            root,
 		PathTransformer: pathTransformer,
 	}
 }
@@ -97,7 +97,7 @@ func (s *Store) readStream(key string) (io.Reader, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Read %d bytes from disk: %s\n", n, fullFileNameWithRoot)
+	log.Printf("Read %d bytes from disk: %s\n", n, fullFileNameWithRoot)
 	return buf, nil
 }
 
@@ -124,7 +124,7 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
-	fmt.Printf("Written %d bytes to disk: %s\n", n, fullFileNameWithRoot)
+	log.Printf("Written %d bytes to disk: %s\n", n, fullFileNameWithRoot)
 	return nil
 }
 
@@ -149,7 +149,7 @@ func (s *Store) deleteStream(key string) error {
 	pathNameWithRoot := s.Root + "/" + strings.Split(pathKey.PathName, "/")[0]
 
 	defer func() {
-		fmt.Printf("deteted from disk: %s\n", pathNameWithRoot)
+		log.Printf("deteted from disk: %s\n", pathNameWithRoot)
 	}()
 	return os.RemoveAll(pathNameWithRoot)
 }

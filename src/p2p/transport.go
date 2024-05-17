@@ -1,6 +1,8 @@
 package p2p
 
-import "fmt"
+import (
+	"log"
+)
 
 // Peer represents the remote node
 type Peer interface{
@@ -8,7 +10,7 @@ type Peer interface{
 }
 
 func DefaultPeerValidation(peer Peer) error {
-	fmt.Printf("Validating peer: %v\n", peer)
+	log.Printf("Validating peer: %v\n", peer)
 	return nil
 }
 

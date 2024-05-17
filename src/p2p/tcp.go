@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"net"
 	// "sync"
 )
@@ -76,7 +76,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 		return err
 	}
 	go t.start()
-	fmt.Println("[Started listening and accepting connections]")
+	log.Println("[Started listening and accepting connections]")
 	return nil
 }
 
@@ -88,7 +88,7 @@ func (t *TCPTransport) start() {
 			return
 		}
 		if err != nil {
-			fmt.Printf("[ERROR] While Accepting: %s\n", err)
+			log.Printf("[ERROR] While Accepting: %s\n", err)
 		}
 		go t.handleConn(conn, false)
 	}
@@ -99,7 +99,7 @@ func (t *TCPTransport) Dial(addr string) error {
 	// TODO: study
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		fmt.Printf("[ERROR] While Dial TCP Transport, err: %s\n", err)
+		log.Printf("[ERROR] While Dial TCP Transport, err: %s\n", err)
 		return err
 	}
 	go t.handleConn(conn, true)
@@ -110,34 +110,34 @@ func (t *TCPTransport) Dial(addr string) error {
 func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 	var err error
 	defer func() {
-		fmt.Println("Closing peer connection")
+		log.Println("Closing peer connection")
 		conn.Close()
 	}()
 
 	peer := NewTCPPeer(conn, outBound)
-	fmt.Printf("new conection: %+v | %+v\n", conn, peer)
+	log.Printf("new conection: %+v | %+v\n", conn, peer)
 
 	if err := t.Handshake(peer); err != nil {
 		conn.Close()
-		fmt.Printf("[ERROR] TCP handshake error: %s\n", err)
+		log.Printf("[ERROR] TCP handshake error: %s\n", err)
 		return
 	}
-	fmt.Println("Handshake completed")
+	log.Println("Handshake completed")
 
 	if t.PeerValidation != nil {
 		if err = t.PeerValidation(peer); err != nil {
-			fmt.Printf("Peer validation failed: %v\n", err)
+			log.Printf("Peer validation failed: %v\n", err)
 			return
 		}
 	}
-	fmt.Println("Peer Validated Successfully")
+	log.Println("Peer Validated Successfully")
 
 	msg := NewMessage(conn.RemoteAddr())
 	for {
 		conn.Read(msg.Payload)
 		// TODO: only to drop conn if the connectin is closed by the foreign entity
 		if err = t.Decoder.Decode(conn, msg); err != nil {
-			fmt.Printf("[ERROR] TCP error: %s\n", err)
+			log.Printf("[ERROR] TCP error: %s\n", err)
 			return
 		}
 		// TODO: could also send pointer to the message
@@ -146,7 +146,7 @@ func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 }
 
 func (t *TCPTransport) Close() error {
-	fmt.Println("Closing TCP Tranport")
+	log.Println("Closing TCP Tranport")
 	t.tearDownChan <- 1
 	return t.listner.Close()
 }

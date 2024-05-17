@@ -1,8 +1,8 @@
 package fileserver
 
 import (
-	"fmt"
 	"io"
+	"log"
 
 	"github.com/sid2199/diststore/src/p2p"
 	"github.com/sid2199/diststore/src/store"
@@ -44,15 +44,15 @@ func (fs *FileServer) Close() {
 
 func (fs *FileServer) Consume() {
 	defer func() {
-		fmt.Println("Closing the File Server")
+		log.Println("Closing the File Server")
 		fs.Transport.Close()
 	}()
-	fmt.Println("Started Consuming")
+	log.Println("Started Consuming")
 
 	for {
 		select {
 		case msg := <-fs.Transport.Consume():
-			fmt.Println(msg)
+			log.Println(msg)
 		case <-fs.tearDownChan:
 			return
 		}
@@ -77,9 +77,9 @@ func (fs *FileServer) Store(key string, r io.Reader) error {
 func (fs *FileServer) Dial() {
 	for _, addr := range fs.RemoteNodes {
 		go func(addr string) {
-			fmt.Printf("Dialing %s\n", addr)
+			log.Printf("Dialing %s\n", addr)
 			if err := fs.Transport.Dial(addr); err != nil {
-				fmt.Printf("[ERROR] While Dial in FileServer, err: %s\n", err)
+				log.Printf("[ERROR] While Dial in FileServer, err: %s\n", err)
 			}
 		}(addr)
 	}
