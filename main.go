@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+
 	"github.com/sid2199/diststore/src/fileserver"
 	"github.com/sid2199/diststore/src/logger"
 )
@@ -20,6 +22,8 @@ func main() {
 	}()
 	log.Error.Fatalf("[ERROR] %s\n", fs2.Start())
 
+	data := bytes.NewReader([]byte("very very big file..."))
+	fs2.Store("my private data", data)
 	// select {}
 	return
 }

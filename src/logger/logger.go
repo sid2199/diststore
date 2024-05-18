@@ -17,6 +17,7 @@ type logger struct {
 var Logger logger = logger{}
 
 func init() {
+	// NOTE: not a good approach
 	fmt.Println("Init Logger")
 	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Ltime | log.Lmicroseconds)
 	Logger.Info = log.New(os.Stdout, "[INFO] ", log.Ldate|log.Ltime|log.Lshortfile)

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 	"net"
-	// "sync"
+	"sync"
 )
 
 // TCPPeer represents the remote node over a TCP connection
@@ -32,8 +32,8 @@ type TCPTransport struct {
 
 	tearDownChan chan int
 
-	// mu    sync.RWMutex
-	// peers map[net.Addr]Peer
+	peerLock *sync.Mutex
+	peer     map[string]Peer
 }
 
 func NewTCPTransportOpts(listnerAddr string, handshake Handshake, decoder Decoder, peerValidation func(Peer) error) *TCPTransportOpts {
@@ -56,11 +56,32 @@ func (peer *TCPPeer) Close() error {
 	return peer.conn.Close()
 }
 
+func (peer *TCPPeer) RemoteAddr() net.Addr {
+	return peer.conn.RemoteAddr()
+}
+
+func (peer *TCPPeer) Send(b []byte) error {
+	_, err := peer.conn.Write(b)
+	return err
+}
+
+func (t *TCPTransport) PeerValidation(peer Peer) error {
+	t.peerLock.Lock()
+	defer t.peerLock.Unlock()
+
+	t.peer[peer.RemoteAddr().String()] = peer
+
+	log.Printf("Conneted with peer: %s\n", peer.RemoteAddr())
+	return nil
+}
+
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
 		msgChan:          make(chan Message),
 		tearDownChan:     make(chan int, 1),
+		peerLock:         &sync.Mutex{},
+		peer:             make(map[string]Peer),
 	}
 }
 

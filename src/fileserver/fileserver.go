@@ -74,6 +74,15 @@ func (fs *FileServer) Store(key string, r io.Reader) error {
 	return fs.store.Write(key, r)
 }
 
+type Payload struct {
+	Key string
+	Data []byte
+}
+
+func (fs *FileServer) Broadcast(payload Payload) error {
+	return nil
+}
+
 func (fs *FileServer) Dial() {
 	for _, addr := range fs.RemoteNodes {
 		go func(addr string) {
