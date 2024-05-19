@@ -1,7 +1,10 @@
 package p2p
 
 import (
+	"encoding/gob"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -10,7 +13,7 @@ import (
 // TCPPeer represents the remote node over a TCP connection
 type TCPPeer struct {
 	// study
-	conn net.Conn
+	net.Conn
 
 	// if we dial a connection to another peer then it is outBound
 	// else if a connection is accecpted it is inBound
@@ -18,10 +21,10 @@ type TCPPeer struct {
 }
 
 type TCPTransportOpts struct {
-	ListenAddr     string
-	Handshake      Handshake
-	Decoder        Decoder
-	PeerValidation func(Peer) error
+	ListenAddr string
+	Handshake  Handshake
+	Decoder    Decoder
+	// PeerValidation func(Peer) error
 }
 
 type TCPTransport struct {
@@ -32,36 +35,36 @@ type TCPTransport struct {
 
 	tearDownChan chan int
 
-	peerLock *sync.Mutex
+	peerLock sync.Mutex
 	peer     map[string]Peer
 }
 
 func NewTCPTransportOpts(listnerAddr string, handshake Handshake, decoder Decoder, peerValidation func(Peer) error) *TCPTransportOpts {
 	return &TCPTransportOpts{
-		ListenAddr:     listnerAddr,
-		Handshake:      handshake,
-		Decoder:        decoder,
-		PeerValidation: peerValidation,
+		ListenAddr: listnerAddr,
+		Handshake:  handshake,
+		Decoder:    decoder,
+		// PeerValidation: peerValidation,
 	}
 }
 
 func NewTCPPeer(conn net.Conn, outBound bool) *TCPPeer {
 	return &TCPPeer{
-		conn:     conn,
+		Conn:     conn,
 		outBound: outBound,
 	}
 }
 
-func (peer *TCPPeer) Close() error {
-	return peer.conn.Close()
-}
+// func (peer *TCPPeer) Close() error {
+// 	return peer.conn.Close()
+// }
 
-func (peer *TCPPeer) RemoteAddr() net.Addr {
-	return peer.conn.RemoteAddr()
-}
+// func (peer *TCPPeer) RemoteAddr() net.Addr {
+// 	return peer.conn.RemoteAddr()
+// }
 
 func (peer *TCPPeer) Send(b []byte) error {
-	_, err := peer.conn.Write(b)
+	_, err := peer.Conn.Write(b)
 	return err
 }
 
@@ -69,6 +72,7 @@ func (t *TCPTransport) PeerValidation(peer Peer) error {
 	t.peerLock.Lock()
 	defer t.peerLock.Unlock()
 
+	fmt.Printf("----------------peer: %+v\n", peer)
 	t.peer[peer.RemoteAddr().String()] = peer
 
 	log.Printf("Conneted with peer: %s\n", peer.RemoteAddr())
@@ -80,7 +84,6 @@ func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 		TCPTransportOpts: opts,
 		msgChan:          make(chan Message),
 		tearDownChan:     make(chan int, 1),
-		peerLock:         &sync.Mutex{},
 		peer:             make(map[string]Peer),
 	}
 }
@@ -128,6 +131,36 @@ func (t *TCPTransport) Dial(addr string) error {
 	return nil
 }
 
+// TODO: move to models
+type Payload struct {
+	Key  string
+	Data []byte
+}
+
+func (t *TCPTransport) Broadcast(payload Payload) error {
+	t.peerLock.Lock()
+	defer t.peerLock.Unlock()
+
+	// for _, peer := range t.peer {
+	// 	if err := gob.NewEncoder(peer).Encode(payload); err != nil {
+	// 		return err
+	// 	}
+	// }
+	// return nil
+
+	// alternative approach
+	// TODO: study
+	peers := []io.Writer{}
+	for _, peer := range t.peer {
+		peers = append(peers, peer)
+	}
+
+	fmt.Println("--------------------------", peers)
+
+	multiWriter := io.MultiWriter(peers...)
+	return gob.NewEncoder(multiWriter).Encode(payload)
+}
+
 func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 	var err error
 	defer func() {
@@ -145,12 +178,18 @@ func (t *TCPTransport) handleConn(conn net.Conn, outBound bool) {
 	}
 	log.Println("Handshake completed")
 
-	if t.PeerValidation != nil {
-		if err = t.PeerValidation(peer); err != nil {
-			log.Printf("Peer validation failed: %v\n", err)
-			return
-		}
+	// TODO: fix this
+	// if t.PeerValidation != nil {
+	// 	if err = t.PeerValidation(peer); err != nil {
+	// 		log.Printf("Peer validation failed: %v\n", err)
+	// 		return
+	// 	}
+	// }
+	if err = t.PeerValidation(peer); err != nil {
+		log.Printf("Peer validation failed: %v\n", err)
+		return
 	}
+
 	log.Println("Peer Validated Successfully")
 
 	msg := NewMessage(conn.RemoteAddr())

@@ -1,6 +1,9 @@
 package fileserver
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
 	"io"
 	"log"
 
@@ -47,16 +50,24 @@ func (fs *FileServer) Consume() {
 		log.Println("Closing the File Server")
 		fs.Transport.Close()
 	}()
-	log.Println("Started Consuming")
+	log.Println("[INFO] File Server Started Consuming")
 
 	for {
 		select {
 		case msg := <-fs.Transport.Consume():
-			log.Println(msg)
+			var m p2p.Message
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
+				log.Println("[Error]", err)
+			}
+			log.Printf("payload received from %s: %+s\n", msg.From, m.Payload)
 		case <-fs.tearDownChan:
 			return
 		}
 	}
+}
+
+func (fs *FileServer) handleMessage(msg *p2p.Message) error {
+	return nil
 }
 
 func (fs *FileServer) Start() error {
@@ -71,19 +82,33 @@ func (fs *FileServer) Start() error {
 }
 
 func (fs *FileServer) Store(key string, r io.Reader) error {
-	return fs.store.Write(key, r)
+	buf := bytes.Buffer{}
+	tee := io.TeeReader(r, &buf)
+
+	if err := fs.store.Write(key, tee); err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(&buf, r); err != nil {
+		return err
+	}
+
+	payload := p2p.Payload{
+		Key:  key,
+		Data: buf.Bytes(),
+	}
+
+	log.Printf("Broadcasting data: %s", buf.Bytes())
+
+	return fs.Broadcast(payload)
 }
 
-type Payload struct {
-	Key string
-	Data []byte
-}
-
-func (fs *FileServer) Broadcast(payload Payload) error {
-	return nil
+func (fs *FileServer) Broadcast(payload p2p.Payload) error {
+	return fs.Transport.Broadcast(payload)
 }
 
 func (fs *FileServer) Dial() {
+	fmt.Println("============================")
 	for _, addr := range fs.RemoteNodes {
 		go func(addr string) {
 			log.Printf("Dialing %s\n", addr)

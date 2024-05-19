@@ -8,8 +8,12 @@ import (
 // Peer represents the remote node
 type Peer interface{
 	Send([]byte) error
-	RemoteAddr() net.Addr
-	Close() error
+	// RemoteAddr() net.Addr
+	// Close() error
+
+	// Implemented Interface embadding
+	// instead of making a method for every method or variable
+	net.Conn
 }
 
 func DefaultPeerValidation(peer Peer) error {
@@ -25,6 +29,7 @@ type Transport interface{
 	Consume() <-chan Message
 	Close () error
 	Dial(string) error
+	Broadcast(Payload) error
 }
 
 

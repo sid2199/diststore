@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/sid2199/diststore/src/fileserver"
 	"github.com/sid2199/diststore/src/logger"
@@ -20,10 +21,15 @@ func main() {
 	go func() {
 		log.Error.Fatalf("[ERROR] %s\n", fs1.Start())
 	}()
-	log.Error.Fatalf("[ERROR] %s\n", fs2.Start())
+	time.Sleep(time.Second * 1)
+	go func() {
+		log.Error.Fatalf("[ERROR] %s\n", fs2.Start())
+	}()
+	time.Sleep(time.Second * 1)
 
 	data := bytes.NewReader([]byte("very very big file..."))
 	fs2.Store("my private data", data)
-	// select {}
+
+	select {}
 	return
 }
