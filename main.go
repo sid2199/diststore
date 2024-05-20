@@ -13,7 +13,6 @@ var log = logger.Logger
 func main() {
 	log.Info.Println("[DISTRIBUTED STORAGE]")
 
-	// cfg := config.Load("")
 
 	fs1 := fileserver.MakeServer(":3000")
 	fs2 := fileserver.MakeServer(":4000", ":3000")
